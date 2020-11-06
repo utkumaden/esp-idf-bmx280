@@ -1,0 +1,34 @@
+menu "BMX280 Options"
+    choice BMX280_EXPECT_DEVICE
+        prompt "Installed Sensor Model"
+        help
+            Set to the model of the sensor you are using (if you know it).
+        default BMX280_EXPECT_DETECT
+        config BMX280_EXPECT_DETECT
+            bool "Auto"
+        config BMX280_EXPECT_BME280
+            bool "BME280"
+        config BMX280_EXPECT_BMP280
+            bool "BMP280"
+    endchoice
+
+    choice BMX280_ADDRESS
+        prompt "I2C Slave Address"
+        help
+            Set the slave address of the sensor if you know it. The driver can
+            automatically detect it if you don't know.
+        default BMX280_ADDRESS_DETECT
+        config BMX280_ADDRESS_DETECT
+            bool "Auto"
+        config BMX280_ADDERSS_LO
+            bool "0x76 (SDO LOW)"
+        config BMX280_ADDERSS_HI
+            bool "0x77 (SDO HIGH)"
+    endchoice
+
+    config BMX280_TIMEOUT
+        int "Read/Write Timeout"
+        default 5
+        help
+            Number of ticks to wait for I2C read/write operations.
+endmenu
