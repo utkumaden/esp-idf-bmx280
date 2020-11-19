@@ -6,6 +6,10 @@
 #include "bmx280.h"
 #include "esp_log.h"
 
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
+
 // [BME280] Register address of humidity least significant byte.
 #define BMX280_REG_HUMI_LSB 0xFE
 // [BME280] Register address of humidity most significant byte.
@@ -40,7 +44,7 @@
 #define BMX280_REG_CAL_LO 0x88
 
 // Register address for sensor reset.
-#define BXM280_REG_RESET 0xE0
+#define BMX280_REG_RESET 0xE0
 // Chip reset vector.
 #define BMX280_RESET_VEC 0xB6
 
@@ -56,9 +60,37 @@
 #define BMP280_ID2 0x58
 
 struct bmx280_t{
+    // I2C port.
     i2c_port_t i2c_port;
+    // Slave Address of sensor.
     uint8_t slave;
+    // Chip ID of sensor
     uint8_t chip_id;
+    // Compensation data
+    struct {
+        uint16_t T1;
+        int16_t T2;
+        int16_t T3;
+        uint16_t P1;
+        int16_t P2;
+        int16_t P3;
+        int16_t P4;
+        int16_t P5;
+        int16_t P6;
+        int16_t P7;
+        int16_t P8;
+        int16_t P9;
+    #if !(CONFIG_BMX280_EXPECT_BMP280)
+        uint8_t H1;
+        int16_t H2;
+        uint8_t H3;
+        int16_t H4;
+        int16_t H5;
+        int8_t H6;
+    #endif
+    } cmps;
+    // Storage for a variable proportional to temperature.
+    int32_t t_fine;
 };
 
 /**
@@ -98,23 +130,30 @@ static esp_err_t bmx280_read(bmx280_t *bmx280, uint8_t addr, uint8_t *dout, size
     {
         // Write register address
         i2c_master_start(cmd);
-        i2c_master_write_byte(cmd, bmx280->slave | I2C_MASTER_READ, true);
+        i2c_master_write_byte(cmd, bmx280->slave | I2C_MASTER_WRITE, true);
         i2c_master_write_byte(cmd, addr, true);
         i2c_master_stop(cmd);
 
-        // Read Registers
-        i2c_master_start(cmd);
-        i2c_master_read(cmd, dout, size, true);
-        i2c_master_stop(cmd);
-
-        err = i2c_master_cmd_begin(bmx280->i2c_port, cmd, 5);
-
+        err = i2c_master_cmd_begin(bmx280->i2c_port, cmd, CONFIG_BMX280_TIMEOUT);
         i2c_cmd_link_delete(cmd);
+
+        if (err == ESP_OK && (cmd = i2c_cmd_link_create()))
+        {
+            // Read Registers
+            i2c_master_start(cmd);
+            i2c_master_write_byte(cmd, bmx280->slave | I2C_MASTER_READ, true);
+            i2c_master_read(cmd, dout, size, I2C_MASTER_LAST_NACK);
+            i2c_master_stop(cmd);
+
+            err = i2c_master_cmd_begin(bmx280->i2c_port, cmd, CONFIG_BMX280_TIMEOUT);
+            i2c_cmd_link_delete(cmd);
+        }
+
         return err;
     }
-    else 
+    else
     {
-        return ESP_ERR_NO_MEM; 
+        return ESP_ERR_NO_MEM;
     }
 }
 
@@ -135,7 +174,7 @@ static esp_err_t bmx280_write(bmx280_t* bmx280, uint8_t addr, const uint8_t *din
         }
         i2c_master_stop(cmd);
 
-        err = i2c_master_cmd_begin(bmx280->i2c_port, cmd, 5);
+        err = i2c_master_cmd_begin(bmx280->i2c_port, cmd, CONFIG_BMX280_TIMEOUT);
         i2c_cmd_link_delete(cmd);
         return err;
     }
@@ -161,7 +200,7 @@ static esp_err_t bmx280_probe_address(bmx280_t *bmx280)
         #endif
         )
         {
-            ESP_LOGI("bmx280", "Probe success: address=%hhu, id=%hhu", bmx280->slave, bmx280->chip_id);
+            ESP_LOGI("bmx280", "Probe success: address=%hhx, id=%hhx", bmx280->slave, bmx280->chip_id);
            return ESP_OK;
         }
         else
@@ -170,7 +209,7 @@ static esp_err_t bmx280_probe_address(bmx280_t *bmx280)
         }
     }
 
-    ESP_LOGW("bmx280", "Probe failure: address=%hhu, id=%hhu, reason=%s", bmx280->slave, bmx280->chip_id, esp_err_to_name(err));
+    ESP_LOGW("bmx280", "Probe failure: address=%hhx, id=%hhx, reason=%s", bmx280->slave, bmx280->chip_id, esp_err_to_name(err));
     return err;
 }
 
@@ -200,3 +239,202 @@ static esp_err_t bmx280_probe(bmx280_t *bmx280)
     return err;
     #endif
 }
+
+static esp_err_t bmx280_reset(bmx280_t *bmx280)
+{
+    const static uint8_t din[] = { BMX280_RESET_VEC };
+    return bmx280_write(bmx280, BMX280_REG_RESET, din, sizeof din);
+}
+
+static esp_err_t bmx280_calibrate(bmx280_t *bmx280)
+{
+    // Honestly, the best course of action is to read the high and low banks
+    // into a buffer, then put them in the calibration values. Makes code
+    // endian agnostic, and overcomes struct packing issues.
+    // Also the BME280 high bank is weird.
+    //
+    // Write and pray to optimizations is my new motto.
+
+    ESP_LOGI("bmx280", "Reading out calibration values...");
+
+    esp_err_t err;
+    uint8_t buf[26];
+
+    // Low Bank
+    err = bmx280_read(bmx280, BMX280_REG_CAL_LO, buf, sizeof buf);
+
+    if (err != ESP_OK) return err;
+
+    ESP_LOGI("bmx280", "Read Low Bank.");
+
+    bmx280->cmps.T1 = buf[0] | (buf[1] << 8);
+    bmx280->cmps.T2 = buf[2] | (buf[3] << 8);
+    bmx280->cmps.T3 = buf[4] | (buf[5] << 8);
+    bmx280->cmps.P1 = buf[6] | (buf[7] << 8);
+    bmx280->cmps.P2 = buf[8] | (buf[9] << 8);
+    bmx280->cmps.P3 = buf[10] | (buf[11] << 8);
+    bmx280->cmps.P4 = buf[12] | (buf[13] << 8);
+    bmx280->cmps.P5 = buf[14] | (buf[15] << 8);
+    bmx280->cmps.P6 = buf[16] | (buf[17] << 8);
+    bmx280->cmps.P7 = buf[18] | (buf[19] << 8);
+    bmx280->cmps.P8 = buf[20] | (buf[21] << 8);
+    bmx280->cmps.P9 = buf[22] | (buf[23] << 8);
+
+    #if !(CONFIG_BMX280_EXPECT_BMP280)
+
+    #if CONFIG_BMX280_EXPECT_DETECT
+    if (bmx280_isBME(bmx280->chip_id)) // Only conditional for detect scenario.
+    #endif
+    {
+        // First get H1 out of the way.
+        bmx280->cmps.H1 = buf[23];
+
+        err = bmx280_read(bmx280, BMX280_REG_CAL_HI, buf, 7);
+
+        if (err != ESP_OK) return err;
+
+        ESP_LOGI("bmx280", "Read High Bank.");
+
+        bmx280->cmps.H2 = buf[0] | (buf[1] << 8);
+        bmx280->cmps.H3 = buf[2];
+        bmx280->cmps.H4 = (buf[3] << 4) | (buf[4] & 0x0F);
+        bmx280->cmps.H5 = (buf[4] >> 4) | (buf[5] << 4);
+        bmx280->cmps.H6 = buf[6];
+    }
+
+    #endif
+
+    return ESP_OK;
+}
+
+bmx280_t* bmx280_create(i2c_port_t port)
+{
+    bmx280_t* bmx280 = malloc(sizeof(bmx280_t));
+    if (bmx280)
+    {
+        memset(bmx280, 0, sizeof(bmx280_t));
+
+        bmx280->i2c_port = port;
+        bmx280->slave = 0xDE;
+        bmx280->chip_id = 0xAD;
+    }
+    return bmx280;
+}
+
+void bmx280_close(bmx280_t *bmx280)
+{
+    free(bmx280);
+}
+
+esp_err_t bmx280_init(bmx280_t* bmx280)
+{
+    if (bmx280 == NULL) return ESP_ERR_INVALID_ARG;
+
+    esp_err_t error = bmx280_probe(bmx280) || bmx280_reset(bmx280);
+
+    if (error == ESP_OK)
+    {
+        // Give the sensor 10 ms delay to reset.
+        vTaskDelay(pdMS_TO_TICKS(10));
+
+        // Read calibration data.
+        bmx280_calibrate(bmx280);
+
+        ESP_LOGI("bmx280", "Dumping calibration...");
+        ESP_LOG_BUFFER_HEX("bmx280", &bmx280->cmps, sizeof(bmx280->cmps));
+    }
+
+    return error;
+}
+
+esp_err_t bmx280_configure(bmx280_t* bmx280, bmx280_config_t *cfg)
+{
+    if (bmx280 == NULL || cfg == NULL) return ESP_ERR_INVALID_ARG;
+    if (!bmx280_validate(bmx280)) return ESP_ERR_INVALID_STATE;
+
+    // Always set ctrl_meas first.
+    uint8_t num = (cfg->t_sampling << 5) | (cfg->p_sampling << 2) | BMX280_MODE_SLEEP;
+    esp_err_t err = bmx280_write(bmx280, BMX280_REG_MESCTL, &num, sizeof num);
+
+    if (err) return err;
+
+    // We can set cfg now.
+    num = (cfg->t_standby << 5) | (cfg->iir_filter << 2);
+    err = bmx280_write(bmx280, BMX280_REG_CONFIG, &num, sizeof num);
+
+    if (err) return err;
+
+    #if !(CONFIG_BMX280_EXPECT_BMP280)
+    #if CONFIG_BMX280_EXPECT_DETECT
+    if (bmx280_isBME(bmx280->chip_id))
+    #elif CONFIG_BMX280_EXPECT_BME280
+    #endif
+    {
+        num = cfg->h_sampling;
+        err = bmx280_write(bmx280, BMX280_REG_HUMCTL, &num, sizeof(num));
+
+        if (err) return err;
+    }
+    #endif
+
+    // f = 0; 
+    return ESP_OK;
+}
+
+// HERE BE DRAGONS
+// This code is revised from the Bosch code within the datasheet of the BME280.
+// I do not understand it enough to tell you what it does.
+// No touchies.
+
+// Returns temperature in DegC, resolution is 0.01 DegC. Output value of “5123” equals 51.23 DegC.
+// t_fine carries fine temperature as global value
+int32_t BME280_compensate_T_int32(bmx280_t *bmx280, int32_t adc_T)
+{
+    int32_t var1, var2, T; 
+    var1 = ((((adc_T>>3) -((int32_t)bmx280->cmps.T1<<1))) * ((int32_t)bmx280->cmps.T2)) >> 11;
+    var2  =(((((adc_T>>4) -((int32_t)bmx280->cmps.T1)) * ((adc_T>>4) -((int32_t)bmx280->cmps.T1))) >> 12) * ((int32_t)bmx280->cmps.T3)) >> 14;
+    bmx280->t_fine = var1 + var2;
+    T  = (bmx280->t_fine * 5 + 128) >> 8;
+    return T;
+}
+
+// Returns pressure in Pa as unsigned 32 bit integer in Q24.8 format (24 integer bits and 8 fractional bits).
+// Output value of “24674867” represents 24674867/256 = 96386.2 Pa = 963.862 hPa
+uint32_t BME280_compensate_P_int64(bmx280_t *bmx280, int32_t adc_P)
+{
+    int64_t var1, var2, p;
+    var1 = ((int64_t)bmx280->t_fine) -128000;
+    var2 = var1 * var1 * (int64_t)bmx280->cmps.P6;
+    var2 = var2 + ((var1*(int64_t)bmx280->cmps.P5)<<17);
+    var2 = var2 + (((int64_t)bmx280->cmps.P4)<<35);
+    var1 = ((var1 * var1 * (int64_t)bmx280->cmps.P3)>>8) + ((var1 * (int64_t)bmx280->cmps.P2)<<12);
+    var1 = (((((int64_t)1)<<47)+var1))*((int64_t)bmx280->cmps.P1)>>33;
+    if(var1 == 0){ 
+        return 0; // avoid exception caused by division by zero
+    }
+    p = 1048576-adc_P;
+    p = (((p<<31)-var2)*3125)/var1;
+    var1 = (((int64_t)bmx280->cmps.P9) * (p>>13) * (p>>13)) >> 25;
+    var2 =(((int64_t)bmx280->cmps.P8) * p) >> 19;
+    p = ((p + var1 + var2) >> 8) + (((int64_t)bmx280->cmps.P7)<<4);
+    return (uint32_t)p;
+}
+
+#if !CONFIG_BMX280_EXPECT_BMP280
+
+// Returns humidity in %RH as unsigned 32 bit integer in Q22.10 format (22 integer and 10 fractional bits).
+// Output value of “47445” represents 47445/1024 = 46.333 %RH
+uint32_t bme280_compensate_H_int32(bmx280_t *bmx280, int32_t adc_H)
+{
+    int32_t v_x1_u32r;
+    v_x1_u32r = (bmx280->t_fine -((int32_t)76800));
+    v_x1_u32r = (((((adc_H << 14) -(((int32_t)bmx280->cmps.H4) << 20) -(((int32_t)bmx280->cmps.H5) * v_x1_u32r)) + ((int32_t)16384)) >> 15) * (((((((v_x1_u32r * ((int32_t)bmx280->cmps.H6)) >> 10) * (((v_x1_u32r * ((int32_t)bmx280->cmps.H3)) >> 11) + ((int32_t)32768))) >> 10) + ((int32_t)2097152)) * ((int32_t)bmx280->cmps.H2) + 8192) >> 14));
+    v_x1_u32r = (v_x1_u32r -(((((v_x1_u32r >> 15) * (v_x1_u32r >> 15)) >> 7) * ((int32_t)bmx280->cmps.H1)) >> 4));
+    v_x1_u32r = (v_x1_u32r < 0 ? 0 : v_x1_u32r);
+    v_x1_u32r = (v_x1_u32r > 419430400? 419430400: v_x1_u32r);
+    return(uint32_t)(v_x1_u32r>>12);
+}
+
+#endif
+
+// END OF DRAGONS
