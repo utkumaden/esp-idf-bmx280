@@ -1,8 +1,18 @@
 /**
  * BMX280 - BME280 & BMP280 Driver for Esspressif ESP-32.
- * Copyright (C) 2020
- * H. Utku Maden <utkumaden@hotmail.com>
+ *
+ * MIT License
+ *
+ * Copyright (C) 2020 Halit Utku Maden
+ * Please contact at <utkumaden@hotmail.com>
  */
+
+// LEGAL NOTE:
+// Any code between below the caption "// HERE BE DRAGONS" and above the caption 
+// "// END OF DRAGONS" contains modified versions of code owned by Bosch 
+// Sensortec GmbH and it is not clearly licensed, therefore this code is not 
+// covered by the MIT of this repository. Use at your own risk.
+
 #include "bmx280.h"
 #include "esp_log.h"
 
@@ -421,6 +431,13 @@ bool bmx280_isSampling(bmx280_t* bmx280)
     else
         return false;
 }
+
+
+// LEGAL NOTE:
+// Any code between below the caption "// HERE BE DRAGONS" and above the caption 
+// "// END OF DRAGONS" contains modified versions of code owned by Bosch 
+// Sensortec GmbH and it is not clearly licensed, therefore this code is not 
+// covered by the MIT of this repository. Use at your own risk.
 
 // HERE BE DRAGONS
 // This code is revised from the Bosch code within the datasheet of the BME280.

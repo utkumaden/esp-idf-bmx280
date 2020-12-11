@@ -1,8 +1,12 @@
 /**
  * BMX280 - BME280 & BMP280 Driver for Esspressif ESP-32.
- * Copyright (C) 2020
- * H. Utku Maden <utkumaden@hotmail.com>
+ *
+ * MIT License
+ *
+ * Copyright (C) 2020 Halit Utku Maden
+ * Please contact at <utkumaden@hotmail.com>
  */
+
 #ifndef _BMX280_H_
 #define _BMX280_H_
 
