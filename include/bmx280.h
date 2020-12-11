@@ -42,8 +42,23 @@ esp_err_t bmx280_init(bmx280_t* bmx280);
  */
 esp_err_t bmx280_configure(bmx280_t* bmx280, bmx280_config_t *cfg);
 
+/**
+ * Set the sensor mode of operation.
+ * @param bmx280 Driver structure.
+ * @param mode The mode to set the sensor to.
+ */
 esp_err_t bmx280_setMode(bmx280_t* bmx280, bmx280_mode_t mode);
+/**
+ * Get the sensor current mode of operation.
+ * @param bmx280 Driver structure.
+ * @param mode Pointer to write current mode to.
+ */
+esp_err_t bmx280_getMode(bmx280_t* bmx280, bmx280_mode_t* mode);
 
+/**
+ * Returns true if sensor is currently sampling environment conditions.
+ * @param bmx280 Driver structure.
+ */
 bool bmx280_isSampling(bmx280_t* bmx280);
 
 /**
@@ -55,13 +70,29 @@ bool bmx280_isSampling(bmx280_t* bmx280);
  */
 esp_err_t bmx280_readout(bmx280_t *bmx280, int32_t *temperature, uint32_t *pressure, uint32_t *humidity);
 
-static inline void bmx280_readout2float(bmx280_t *bmx280, int32_t* tin, uint32_t *pin, uint32_t *hin, float *tout, float *pout, float *hout)
+/**
+ * Convert sensor readout to floating point values.
+ * @param tin Input temperature.
+ * @param pin Input pressure.
+ * @param hin Input humidity.
+ * @param tout Output temperature. (C)
+ * @param pout Output pressure. (Pa)
+ * @param hout Output humidity. (%Rh)
+ */
+static inline void bmx280_readout2float(int32_t* tin, uint32_t *pin, uint32_t *hin, float *tout, float *pout, float *hout)
 {
-    *tout = (float)*tin * 0.1f;
+    *tout = (float)*tin * 0.01f;
     *pout = (float)*pin * (1.0f/256.0f);
     *hout = (*hin == UINT32_MAX) ? -1.0f : (float)*hin * (1.0f/1024.0f);
 }
 
+/**
+ * Read sensor values as floating point numbers.
+ * @param bmx280 Driver structure.
+ * @param temperature The temperature in C.
+ * @param pressure The pressure in Pa.
+ * @param humidity The humidity in %RH.
+ */
 static inline esp_err_t bmx280_readoutFloat(bmx280_t *bmx280, float* temperature, float* pressure, float* humidity)
 {
     int32_t t; uint32_t p, h;
@@ -69,7 +100,7 @@ static inline esp_err_t bmx280_readoutFloat(bmx280_t *bmx280, float* temperature
 
     if (err == ESP_OK)
     {
-        bmx280_readout2float(bmx280, &t, &p, &h, temperature, pressure, humidity);
+        bmx280_readout2float(&t, &p, &h, temperature, pressure, humidity);
     }
 
     return err;

@@ -381,6 +381,47 @@ esp_err_t bmx280_configure(bmx280_t* bmx280, bmx280_config_t *cfg)
     return ESP_OK;
 }
 
+esp_err_t bmx280_setMode(bmx280_t* bmx280, bmx280_mode_t mode)
+{
+    uint8_t ctrl_mes;
+    esp_err_t err;
+
+    if ((err = bmx280_read(bmx280, BMX280_REG_MESCTL, &ctrl_mes, 1)) != ESP_OK)
+        return err;
+
+    ctrl_mes = (ctrl_mes & (~3)) | mode;
+
+    return bmx280_write(bmx280, BMX280_REG_MESCTL, &ctrl_mes, 1);
+}
+
+esp_err_t bmx280_getMode(bmx280_t* bmx280, bmx280_mode_t* mode)
+{
+    uint8_t ctrl_mes;
+    esp_err_t err;
+
+    if ((err = bmx280_read(bmx280, BMX280_REG_MESCTL, &ctrl_mes, 1)) != ESP_OK)
+        return err;
+
+    ctrl_mes &= 3;
+
+    switch (ctrl_mes)
+    {
+    default:
+        return ctrl_mes;
+    case (BMX280_MODE_FORCE + 1):
+        return BMX280_MODE_FORCE;
+    }
+}
+
+bool bmx280_isSampling(bmx280_t* bmx280)
+{
+    uint8_t status;
+    if (bmx280_read(bmx280, BMX280_REG_STATUS, &status, 1) == ESP_OK)
+        return (status & (1 << 3)) != 0;
+    else
+        return false;
+}
+
 // HERE BE DRAGONS
 // This code is revised from the Bosch code within the datasheet of the BME280.
 // I do not understand it enough to tell you what it does.
@@ -438,3 +479,59 @@ uint32_t bme280_compensate_H_int32(bmx280_t *bmx280, int32_t adc_H)
 #endif
 
 // END OF DRAGONS
+
+esp_err_t bmx280_readout(bmx280_t *bmx280, int32_t *temperature, uint32_t *pressure, uint32_t *humidity)
+{
+    if (bmx280 == NULL) return ESP_ERR_INVALID_ARG;
+    if (!bmx280_validate(bmx280)) return ESP_ERR_INVALID_STATE;
+
+    uint8_t buffer[3];
+    esp_err_t error;
+
+    if (temperature)
+    {
+        if ((error = bmx280_read(bmx280, BMX280_REG_TEMP_MSB, buffer, 3)) != ESP_OK)
+            return error;
+
+        *temperature = BME280_compensate_T_int32(bmx280,
+                        (buffer[0] << 12) | (buffer[1] << 4) | (buffer[0] >> 4)
+                    );
+    }
+
+    if (pressure)
+    {
+        if ((error = bmx280_read(bmx280, BMX280_REG_PRES_MSB, buffer, 3)) != ESP_OK)
+            return error;
+
+        *pressure = BME280_compensate_P_int64(bmx280, 
+                        (buffer[0] << 12) | (buffer[1] << 4) | (buffer[0] >> 4)
+                    );
+    }
+
+    #if !(CONFIG_BMX280_EXPECT_BMP280)
+    #if CONFIG_BMX280_EXPECT_DETECT
+    if (bmx280_isBME(bmx280->chip_id))
+    #elif CONFIG_BMX280_EXPECT_BME280
+    #endif
+    {
+        if (humidity)
+        {
+            if ((error = bmx280_read(bmx280, BMX280_REG_HUMI_MSB, buffer, 2)) != ESP_OK)
+                return error;
+
+            *humidity = bme280_compensate_H_int32(bmx280,
+                            (buffer[0] << 8) | buffer[0]
+                        );
+        }
+    }
+    #if CONFIG_BMX280_EXPECT_DETECT
+    else if (humidity)
+        *humidity = UINT32_MAX;
+    #endif
+    #else
+    if (humidity)
+        *humidity = UINT32_MAX;
+    #endif
+
+    return ESP_OK;
+}

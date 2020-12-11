@@ -57,11 +57,11 @@ typedef enum bmx280_iirf_t {
 
 typedef enum bmx280_mode_t {
     /** Sensor does no measurements. */
-    BMX280_MODE_SLEEP,
+    BMX280_MODE_SLEEP = 0,
     /** Sensor is in a forced measurement cycle. Sleeps after finishing. */
-    BMX280_MODE_FORCE,
+    BMX280_MODE_FORCE = 1,
     /** Sensor does measurements. Never sleeps. */
-    BMX280_MODE_CYCLE,
+    BMX280_MODE_CYCLE = 3,
 } bmx280_mode_t;
 
 typedef struct bmx280_config_t {
