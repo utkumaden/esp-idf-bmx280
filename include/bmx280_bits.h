@@ -75,7 +75,7 @@ typedef enum bmx280_mode_t {
 
 typedef struct bmx280_config_t {
     bmx280_tsmpl_t t_sampling;
-    bmx280_tsmpl_t p_sampling;
+    bmx280_psmpl_t p_sampling;
     bmx280_tstby_t t_standby;
     bmx280_iirf_t iir_filter;
     #if !(CONFIG_BMX280_EXPECT_BMP280)
