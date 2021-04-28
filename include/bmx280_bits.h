@@ -79,7 +79,7 @@ typedef struct bmx280_config_t {
     bmx280_tstby_t t_standby;
     bmx280_iirf_t iir_filter;
     #if !(CONFIG_BMX280_EXPECT_BMP280)
-    bmx280_hsmpl_t h_sampling;
+    bme280_hsmpl_t h_sampling;
     #endif
 } bmx280_config_t;
 
