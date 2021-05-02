@@ -417,10 +417,12 @@ esp_err_t bmx280_getMode(bmx280_t* bmx280, bmx280_mode_t* mode)
     switch (ctrl_mes)
     {
     default:
-        return ctrl_mes;
+        *mode = ctrl_mes; break;
     case (BMX280_MODE_FORCE + 1):
-        return BMX280_MODE_FORCE;
+        *mode = BMX280_MODE_FORCE; break;
     }
+
+    return ESP_OK;
 }
 
 bool bmx280_isSampling(bmx280_t* bmx280)

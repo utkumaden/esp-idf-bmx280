@@ -85,9 +85,12 @@ esp_err_t bmx280_readout(bmx280_t *bmx280, int32_t *temperature, uint32_t *press
  */
 static inline void bmx280_readout2float(int32_t* tin, uint32_t *pin, uint32_t *hin, float *tout, float *pout, float *hout)
 {
-    *tout = (float)*tin * 0.01f;
-    *pout = (float)*pin * (1.0f/256.0f);
-    *hout = (*hin == UINT32_MAX) ? -1.0f : (float)*hin * (1.0f/1024.0f);
+    if (tin && tout)
+        *tout = (float)*tin * 0.01f;
+    if (pin && pout)
+        *pout = (float)*pin * (1.0f/256.0f);
+    if (hin && hout)
+        *hout = (*hin == UINT32_MAX) ? -1.0f : (float)*hin * (1.0f/1024.0f);
 }
 
 /**
