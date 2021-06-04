@@ -142,23 +142,15 @@ static esp_err_t bmx280_read(bmx280_t *bmx280, uint8_t addr, uint8_t *dout, size
         i2c_master_start(cmd);
         i2c_master_write_byte(cmd, bmx280->slave | I2C_MASTER_WRITE, true);
         i2c_master_write_byte(cmd, addr, true);
+
+        // Read Registers
+        i2c_master_start(cmd);
+        i2c_master_write_byte(cmd, bmx280->slave | I2C_MASTER_READ, true);
+        i2c_master_read(cmd, dout, size, I2C_MASTER_LAST_NACK);
         i2c_master_stop(cmd);
 
         err = i2c_master_cmd_begin(bmx280->i2c_port, cmd, CONFIG_BMX280_TIMEOUT);
         i2c_cmd_link_delete(cmd);
-
-        if (err == ESP_OK && (cmd = i2c_cmd_link_create()))
-        {
-            // Read Registers
-            i2c_master_start(cmd);
-            i2c_master_write_byte(cmd, bmx280->slave | I2C_MASTER_READ, true);
-            i2c_master_read(cmd, dout, size, I2C_MASTER_LAST_NACK);
-            i2c_master_stop(cmd);
-
-            err = i2c_master_cmd_begin(bmx280->i2c_port, cmd, CONFIG_BMX280_TIMEOUT);
-            i2c_cmd_link_delete(cmd);
-        }
-
         return err;
     }
     else
@@ -173,10 +165,10 @@ static esp_err_t bmx280_write(bmx280_t* bmx280, uint8_t addr, const uint8_t *din
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     if (cmd)
     {
-        i2c_master_start(cmd);
-        i2c_master_write_byte(cmd, bmx280->slave | I2C_MASTER_WRITE, true);
         for (int i = 0; i < size; i++)
         {
+            i2c_master_start(cmd);
+            i2c_master_write_byte(cmd, bmx280->slave | I2C_MASTER_WRITE, true);
             // Register
             i2c_master_write_byte(cmd, addr + i, true);
             //Data
