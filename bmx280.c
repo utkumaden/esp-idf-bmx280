@@ -531,7 +531,7 @@ esp_err_t bmx280_readout(bmx280_t *bmx280, int32_t *temperature, uint32_t *press
                 return error;
 
             *humidity = bme280_compensate_H_int32(bmx280,
-                            (buffer[0] << 8) | buffer[0]
+                            (buffer[0] << 8) | buffer[1]
                         );
         }
     }
