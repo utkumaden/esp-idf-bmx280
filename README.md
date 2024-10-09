@@ -90,6 +90,11 @@ i2c_ll_master_set_filter(hal->dev, bus_config->glitch_ignore_cnt);
 xSemaphoreGive(i2c_master->cmd_semphr);
 ```
 
+TODO
+-------
+
+- Modify the USE_I2C_MASTER_DRIVER define statement to work with sdkconfig to allow user to easily select between them without modifying bmx280.h source code
+
 License
 -------
 
