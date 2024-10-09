@@ -17,6 +17,8 @@ Add the module as a requirement to your main module, or other modules.
 Example Code
 ------------
 
+For use with Legacy i2c.h driver
+
 ```c
 #include "esp_log.h"
 #include "bmx280.h"
@@ -67,6 +69,8 @@ void app_main(void)
 }
 ```
 
+For use with i2c_master.h driver please see the [example](examples/example_i2c_master.c) here
+
 Note
 -------
 
@@ -98,4 +102,3 @@ between `// HERE BE DRAGONS` and `// END OF DRAGONS` contains modified versions
 of the Bosch Sensortec code.
 
 Please take note of this in production.
-
