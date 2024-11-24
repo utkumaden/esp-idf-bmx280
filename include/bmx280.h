@@ -16,8 +16,16 @@ extern "C" {
 
 #include <stdint.h>
 #include <limits.h>
-#include "driver/i2c.h"
 #include "sdkconfig.h"
+
+#include "bmx280_bits.h"
+#if !(CONFIG_USE_I2C_NEW_DEVICE)
+#include "driver/i2c.h"
+#else
+#include "driver/i2c_master.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#endif
 
 #define BMXAPI extern
 
@@ -26,14 +34,24 @@ extern "C" {
  */
 typedef struct bmx280_t bmx280_t;
 
-#include "bmx280_bits.h"
 
+
+
+#if !(CONFIG_USE_I2C_NEW_DEVICE)
 /**
  * Create an instance of the BMX280 driver.
  * @param port The I2C port to use.
  * @return A non-null pointer to the driver structure on success.
  */
 BMXAPI bmx280_t* bmx280_create(i2c_port_t port);
+#else
+/**
+ * Create an instance of the BMX280 driver.
+ * @param bus_handle The I2C master handle via port.
+ * @return A non-null pointer to the driver structure on success.
+ */
+BMXAPI bmx280_t* bmx280_create(i2c_master_bus_handle_t bus_handle);
+#endif
 /**
  * Destroy your the instance.
  * @param bmx280 The instance to destroy.
