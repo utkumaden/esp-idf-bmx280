@@ -16,10 +16,11 @@ extern "C" {
 
 #include <stdint.h>
 #include <limits.h>
+#include <assert.h>
 #include "sdkconfig.h"
 
 #include "bmx280_bits.h"
-#if !(CONFIG_USE_I2C_NEW_DEVICE)
+#if !(CONFIG_USE_I2C_MASTER_DRIVER)
 #include "driver/i2c.h"
 #else
 #include "driver/i2c_master.h"
@@ -34,24 +35,28 @@ extern "C" {
  */
 typedef struct bmx280_t bmx280_t;
 
-
-
-
-#if !(CONFIG_USE_I2C_NEW_DEVICE)
-/**
- * Create an instance of the BMX280 driver.
- * @param port The I2C port to use.
- * @return A non-null pointer to the driver structure on success.
- */
-BMXAPI bmx280_t* bmx280_create(i2c_port_t port);
-#else
+#if CONFIG_USE_I2C_MASTER_DRIVER
 /**
  * Create an instance of the BMX280 driver.
  * @param bus_handle The I2C master handle via port.
  * @return A non-null pointer to the driver structure on success.
  */
-BMXAPI bmx280_t* bmx280_create(i2c_master_bus_handle_t bus_handle);
+BMXAPI bmx280_t* bmx280_create_master(i2c_master_bus_handle_t bus_handle);
+// legacy define for existing code bases
+#define bmx280_create(port) bmx280_create_legacy(port)
+#define bmx280_create_legacy(port) static_assert(0, "You have the wrong driver configuration for using the legacy I2C driver.")
+#else
+/**
+ * Create an instance of the BMX280 driver.
+ * @param port The I2C port to use.
+ * @return A non-null pointer to the driver structure on success.
+ */
+BMXAPI bmx280_t* bmx280_create_legacy(i2c_port_t port);
+// legacy define for existing code bases
+#define bmx280_create(port) bmx280_create_legacy(port)
+#define bmx280_create_master(port) static_assert(0, "You have the wrong driver configuration for using the new I2C master driver.")
 #endif
+
 /**
  * Destroy your the instance.
  * @param bmx280 The instance to destroy.

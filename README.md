@@ -12,18 +12,19 @@ Example Code
 ------------
 To use the legacy i2c.h driver, please refer to the [example_with_i2c.h](examples/bmx280_example_without_i2c_master.c).
 
-To use the new i2c_master.h driver (ESP-IDF >= 5.3):
+To use the i2c_master.h driver (ESP-IDF >= 5.3):
 
 * First, run `idf.py menuconfig` to configure the project.
 
-* Navigate to Component Config -> BMX280 Options -> I2C driver setting -> new I2C driver (i2c_master.h).
+* Navigate to Component Config -> BMX280 Options -> I2C driver setting -> I2C Master Driver (i2c_master.h).
 
 * Press the 'S' key to save the configuration.
 
-* You can then use the new driver to complete your code.
+* You can then use the I2C Master driver to complete your code.
 
 For example code, please see the [example_with_i2c_master.h](examples/bmx280_example_with_i2c_master.c).
 
+**Note:** If you want to use the legacy i2c.h driver, no changes are needed; continue using `bmx280_create` to create the anonymous structure `bmx280`. If you use the i2c_master.h driver, you need to use `bmx280_create_master` to create the structure.
 
 License
 -------

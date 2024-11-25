@@ -2,21 +2,18 @@ menu "BMX280 Options"
     choice I2C_DRIVER_SETTING
         prompt "I2C driver setting"
         help
-            Select I2C driver: I2C_OLD: Use old driver I2C.h, I2C_NEW: Use new i2c_master.h(ESP-IDF >=5.3)
-        default USE_I2C_OLD_DEVICE
-    
-        config USE_I2C_OLD_DEVICE
-            bool "old I2C driver (I2C.h)"
+            Select I2C Driver: I2C Legacy Driver: I2C.h , I2C Master Driver i2c_master.h for ESP-IDF >= 5.3 AND Set I2C Clock Speed.
+        default USE_I2C_LEGACY_DRIVER
+        config USE_I2C_LEGACY_DRIVER
+            bool "I2C Legacy Driver (I2C.h)"
             help
-                Use the old I2C driver (I2C.h).
-    
-        config USE_I2C_NEW_DEVICE
-            bool "new I2C driver (i2c_master.h)"
+                Use I2C Legacy Driver (I2C.h).
+        config USE_I2C_MASTER_DRIVER
+            bool "I2C Master Driver (i2c_master.h)"
             help
-                Use the new I2C driver (i2c_master.h) for ESP-IDF >= 5.2.
-
+                Use I2C Master Driver (i2c_master.h) for ESP-IDF >= 5.3.
         config BMX280_I2C_CLK_SPEED_HZ
-            int "I2C clock speed (Hz)"
+            int "I2C Clock Speed (Hz)"
             default 100000
             range 1000 400000
             help

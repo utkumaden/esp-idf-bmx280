@@ -24,7 +24,7 @@ i2c_master_bus_handle_t i2c_bus_init(uint8_t sda_io, uint8_t scl_io)
 
 esp_err_t bmx280_dev_init(bmx280_t** bmx280,i2c_master_bus_handle_t bus_handle)
 {
-    *bmx280 = bmx280_create(bus_handle);
+    *bmx280 = bmx280_create_master(bus_handle);
     if (!*bmx280) { 
         ESP_LOGE("test", "Could not create bmx280 driver.");
         return ESP_FAIL;
@@ -56,10 +56,9 @@ void app_main(void)
         ESP_LOGI("test", "Read Values: temp = %f, pres = %f, hum = %f", temp, pres, hum);
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
-
+    
     bmx280_close(bmx280);
     i2c_del_master_bus(bus_handle);
-    
     ESP_LOGI("test", "Restarting now.");
     esp_restart();
 }
