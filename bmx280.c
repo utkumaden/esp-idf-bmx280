@@ -451,7 +451,7 @@ bmx280_t* bmx280_create_master(i2c_master_bus_handle_t bus_handle)
 void bmx280_close(bmx280_t *bmx280)
 {
     #if CONFIG_USE_I2C_MASTER_DRIVER
-    if(bmx280->i2c_dev!=NULL)
+    if(bmx280 != NULL && bmx280->i2c_dev != NULL)
         i2c_master_bus_rm_device(bmx280->i2c_dev);
     #endif
     free(bmx280);
