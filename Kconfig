@@ -12,14 +12,15 @@ menu "BMX280 Options"
             bool "I2C Master Driver (i2c_master.h)"
             help
                 Use I2C Master Driver (i2c_master.h) for ESP-IDF >= 5.3.
-        config BMX280_I2C_CLK_SPEED_HZ
-            int "I2C Clock Speed (Hz)"
-            default 100000
-            range 1000 400000
-            help
-                Set the I2C clock speed in Hz.
     endchoice
-
+    
+    config BMX280_I2C_CLK_SPEED_HZ
+        int "I2C Clock Speed (Hz)"
+        default 100000
+        range 1000 400000
+        help
+            Set the I2C clock speed in Hz. Only applies to the new I2C Master driver.
+    
     choice BMX280_EXPECT_DEVICE
         prompt "Installed Sensor Model"
         help
