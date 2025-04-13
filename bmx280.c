@@ -338,12 +338,6 @@ static esp_err_t bmx280_probe(bmx280_t *bmx280)
     #endif
 }
 
-static esp_err_t bmx280_reset(bmx280_t *bmx280)
-{
-    const static uint8_t din[] = { BMX280_RESET_VEC };
-    return bmx280_write(bmx280, BMX280_REG_RESET, din, sizeof din);
-}
-
 static esp_err_t bmx280_calibrate(bmx280_t *bmx280)
 {
     // Honestly, the best course of action is to read the high and low banks
@@ -447,6 +441,12 @@ bmx280_t* bmx280_create_master(i2c_master_bus_handle_t bus_handle)
     return bmx280;
 }
 #endif
+
+esp_err_t bmx280_reset(bmx280_t *bmx280)
+{
+    const static uint8_t din[] = { BMX280_RESET_VEC };
+    return bmx280_write(bmx280, BMX280_REG_RESET, din, sizeof din);
+}
 
 void bmx280_close(bmx280_t *bmx280)
 {

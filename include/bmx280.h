@@ -58,6 +58,12 @@ BMXAPI bmx280_t* bmx280_create_legacy(i2c_port_t port);
 #endif
 
 /**
+ * Restart the sensor, effectively puting it into sleep mode.
+ * @param bmx280 The instance to reset.
+ */
+esp_err_t bmx280_reset(bmx280_t *bmx280);
+
+/**
  * Destroy your the instance.
  * @param bmx280 The instance to destroy.
  */
