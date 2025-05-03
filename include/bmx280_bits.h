@@ -57,7 +57,6 @@ typedef enum bmx280_tstby_t {
 
 typedef enum bmx280_iirf_t {
     BMX280_IIR_NONE = 0x0,
-    BMX280_IIR_X1,
     BMX280_IIR_X2,
     BMX280_IIR_X4,
     BMX280_IIR_X8,
