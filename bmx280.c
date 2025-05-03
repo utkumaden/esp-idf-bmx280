@@ -634,7 +634,7 @@ esp_err_t bmx280_readout(bmx280_t *bmx280, int32_t *temperature, uint32_t *press
             return error;
 
         *temperature = BME280_compensate_T_int32(bmx280,
-                        (buffer[0] << 12) | (buffer[1] << 4) | (buffer[0] >> 4)
+                        (buffer[0] << 12) | (buffer[1] << 4) | (buffer[2] >> 4)
                     );
     }
 
@@ -644,7 +644,7 @@ esp_err_t bmx280_readout(bmx280_t *bmx280, int32_t *temperature, uint32_t *press
             return error;
 
         *pressure = BME280_compensate_P_int64(bmx280, 
-                        (buffer[0] << 12) | (buffer[1] << 4) | (buffer[0] >> 4)
+                        (buffer[0] << 12) | (buffer[1] << 4) | (buffer[2] >> 4)
                     );
     }
 
